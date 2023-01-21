@@ -8,6 +8,7 @@
 #include <queue>
 #include <stack>
 #include <unordered_map>
+#include <algorithm>
 #include "Pair.h"
 #include "sup.h"
 
@@ -27,12 +28,6 @@ protected:
 			value = another.value;
 			id = another.id;
 		}
-		//Vertex(Vertex&& another) {
-		//	value = another.value;
-		//	id = another.id;
-		//	another.value = TV();
-		//	another.id = 0;
-		//}
 		Vertex& operator=(const Vertex& another) {
 			value = another.value;
 			id = another.id;
@@ -97,7 +92,7 @@ protected:
 	};
 
 	std::unordered_map<size_t, std::vector<Edge>> incidence_list;
-	std::unordered_map<size_t, Vertex> vertexes;
+    std::unordered_map<size_t, Vertex> vertices;
 	size_t vertex_count = 0;
 	size_t edge_count = 0;
 	bool weighed = false;
@@ -161,13 +156,20 @@ public:
         size_t size() {
             return seq.size();
         }
-		bool operator==(const Path& path) {
-			if (seq == path.seq) {
-				return true;
-			}
-			return false;
-		}
-		bool operator!=(const Path& path) {
+        bool operator==(const Path& path) const {
+            if (seq.size() != path.seq.size()) {
+                return false;
+            }
+            auto it2 = path.seq.cbegin();
+            for (auto it1 = seq.cbegin(); it1 != seq.cend(); it1++) {
+                if (*it1 != *it2) {
+                    return false;
+                }
+                it2++;
+            }
+            return true;
+        }
+        bool operator!=(const Path& path) const {
             return !(*this == path);
 		}
 
@@ -193,7 +195,7 @@ template <class TV, class TE>
 void Graph<TV, TE>::add_vertex(size_t _id, TV _value) {
 	if (incidence_list.empty()) {
 		incidence_list.reserve(10);
-		vertexes.reserve(10);
+        vertices.reserve(10);
 	}
 	if (_id <= 0) {
         //throw std::exception("Inappropriate id");
@@ -205,14 +207,14 @@ void Graph<TV, TE>::add_vertex(size_t _id, TV _value) {
 	}
 	Vertex vertex(_id, _value);
 	incidence_list[_id] = std::vector<Edge>();
-	vertexes[_id] = vertex;
+    vertices[_id] = vertex;
 	vertex_count++;
 }
 template <class TV, class TE>
 void Graph<TV, TE>::add_edge(size_t from, size_t to, TE _value) {
 	if (incidence_list.empty()) {
 		incidence_list.reserve(10);
-		vertexes.reserve(10);
+        vertices.reserve(10);
 	}
 	Vertex vf(from, TV());
 	Vertex vt(to, TV());
@@ -222,12 +224,12 @@ void Graph<TV, TE>::add_edge(size_t from, size_t to, TE _value) {
 	if (to <= 0) {
         //throw std::exception("Inappropriate id");
 	}
-	if (vertexes.find(from) == vertexes.end()) {
-		vertexes[from] = vf;
+    if (vertices.find(from) == vertices.end()) {
+        vertices[from] = vf;
 		vertex_count++;
  	}
-	if (vertexes.find(to) == vertexes.end()) {
-		vertexes[to] = vt;
+    if (vertices.find(to) == vertices.end()) {
+        vertices[to] = vt;
 		vertex_count++;
 	}
 	incidence_list[from].push_back(Edge(from, to, _value));
@@ -245,22 +247,22 @@ TV& Graph<TV, TE>::vertex_weight(size_t _id) {
         //throw std::exception("Inappropriate id");
 	}
 	Vertex v(_id, TV());
-	if (vertexes.find(_id) == vertexes.end()) {
+    if (vertices.find(_id) == vertices.end()) {
 		vertex_count++;
 		incidence_list[_id] = std::vector<Edge>();
-		vertexes[_id] = v;
+        vertices[_id] = v;
 	}
-	return vertexes[_id].value;
+    return vertices[_id].value;
 }
 template <class TV, class TE>
 void Graph<TV, TE>::erase_vertex(size_t _id) {
-	if (vertexes.find(_id) == vertexes.end()) {
+    if (vertices.find(_id) == vertices.end()) {
 		return;
 	}
 	edge_count -= incidence_list[_id].size();
 	vertex_count--;
 	incidence_list.erase(incidence_list.find(_id));
-	vertexes.erase(vertexes.find(_id));
+    vertices.erase(vertices.find(_id));
 	for (auto elem = incidence_list.begin(); elem != incidence_list.end(); elem++) {
 		for (auto itv = elem->second.begin(); itv != elem->second.end(); ) {
 			if (itv->id_from == _id || itv->id_to == _id) {
@@ -279,7 +281,7 @@ void Graph<TV, TE>::clear() {
         it->second.clear();
     }
     incidence_list.clear();
-    vertexes.clear();
+    vertices.clear();
     vertex_count = 0;
     edge_count = 0;
     weighed = false;
@@ -351,7 +353,7 @@ private:
 		dist.reserve(Graph<TV, TE>::vertex_count);
 		parents.reserve(Graph<TV, TE>::vertex_count);
 		edges.reserve(Graph<TV, TE>::edge_count);
-		for (auto el = Graph<TV, TE>::vertexes.begin(); el != Graph<TV, TE>::vertexes.end(); el++) {
+        for (auto el = Graph<TV, TE>::vertices.begin(); el != Graph<TV, TE>::vertices.end(); el++) {
 			checked[el->second.id] = false;
             dist[el->second.id] = inf();
 			parents[el->second.id] = 0;
@@ -360,7 +362,7 @@ private:
 		parents[from] = from;
         for (size_t i = 0; i < Graph<TV, TE>::vertex_count; ++i) {
 			size_t v = 0;
-			for (auto it = Graph<TV, TE>::vertexes.cbegin(); it != Graph<TV, TE>::vertexes.cend(); it++) {
+            for (auto it = Graph<TV, TE>::vertices.cbegin(); it != Graph<TV, TE>::vertices.cend(); it++) {
 				if (!checked[it->second.id] && (v == 0 || dist[it->second.id] < dist[v])) {
 					v = it->second.id;
 				}
@@ -394,6 +396,27 @@ private:
 		res.push_front(p, i, edges[Pair<size_t, size_t>{p, i}]);
 		return res;
 	}
+    void dfs(size_t v, int& counter, bool& cycle, std::unordered_map<size_t, int>& tin, std::unordered_map<size_t, int>& tout, std::vector<size_t>& res) {
+        tin[v] = counter++;
+        for (auto it = Graph<TV, TE>::incidence_list[v].cbegin(); it != Graph<TV, TE>::incidence_list[v].cend(); it++) {
+            int cur = 0;
+            if (it->id_from == v) {
+                cur = it->id_to;
+            }
+            else {
+                continue;
+            }
+            if (tin[cur] && !tout[cur]) {
+                cycle = true;
+                return;
+            }
+            if (!tin[cur]) {
+                dfs(cur, counter, cycle, tin, tout, res);
+            }
+        }
+        res.push_back(v);
+        tout[v] = counter++;
+    }
 public:
     void erase_edge(size_t from, size_t to, TE _value = TE());
 	Path min_path(size_t from, size_t to) {
@@ -402,6 +425,27 @@ public:
 		}
 		return bfs(from, to);
 	}
+    std::vector<size_t> top_sort() {
+        std::unordered_map<size_t, int> tin(Graph<TV, TE>::vertex_count);
+        std::unordered_map<size_t, int> tout(Graph<TV, TE>::vertex_count);
+        std::vector<size_t> res(Graph<TV, TE>::vertex_count);
+        bool cycle = false;
+        int counter = 1;
+        for (auto it = Graph<TV, TE>::vertices.cbegin(); it != Graph<TV, TE>::vertices.cend(); it++) {
+            tin[it->first] = 0;
+            tout[it->first] = 0;
+        }
+        for (auto it = Graph<TV, TE>::vertices.cbegin(); it != Graph<TV, TE>::vertices.cend(); it++) {
+            if (!tin[it->first]) {
+                dfs(it->first, counter, cycle, tin, tout, res);
+            }
+            if (cycle) {
+                return res;
+            }
+        }
+        std::reverse(res.begin(), res.end());
+        return res;
+    }
 };
 
 template <class TV, class TE>
@@ -463,7 +507,7 @@ private:
 		dist.reserve(Graph<TV, TE>::vertex_count);
 		parents.reserve(Graph<TV, TE>::vertex_count);
 		edges.reserve(Graph<TV, TE>::edge_count);
-		for (auto el = Graph<TV, TE>::vertexes.begin(); el != Graph<TV, TE>::vertexes.end(); el++) {
+        for (auto el = Graph<TV, TE>::vertices.begin(); el != Graph<TV, TE>::vertices.end(); el++) {
 			checked[el->second.id] = false;
             dist[el->second.id] = inf();
 			parents[el->second.id] = 0;
@@ -472,7 +516,7 @@ private:
 		parents[from] = from;
         for (size_t i = 0; i < Graph<TV, TE>::vertex_count; ++i) {
 			size_t v = 0;
-			for (auto it = Graph<TV, TE>::vertexes.cbegin(); it != Graph<TV, TE>::vertexes.cend(); it++) {
+            for (auto it = Graph<TV, TE>::vertices.cbegin(); it != Graph<TV, TE>::vertices.cend(); it++) {
 				if (!checked[it->second.id] && (v == 0 || dist[it->second.id] < dist[v])) {
 					v = it->second.id;
 				}
@@ -510,6 +554,27 @@ private:
 		res.push_front(p, i, edges[Pair<size_t, size_t>{p, i}]);
 		return res;
 	}
+    void dfs(size_t v, int& counter, bool& cycle, std::unordered_map<size_t, int>& tin, std::unordered_map<size_t, int>& tout, std::vector<size_t>& res) {
+        tin[v] = counter++;
+        for (auto it = Graph<TV, TE>::incidence_list[v].cbegin(); it != Graph<TV, TE>::incidence_list[v].cend(); it++) {
+            int cur = 0;
+            if (it->id_from == v) {
+                cur = it->id_to;
+            }
+            else {
+                cur = it->id_from;
+            }
+            if (tin[cur] && !tout[cur]) {
+                cycle = true;
+                return;
+            }
+            if (!tin[cur]) {
+                dfs(cur, counter, cycle, tin, tout, res);
+            }
+        }
+        res.push_back(v);
+        tout[v] = counter++;
+    }
 public:
     void erase_edge(size_t from, size_t to, TE _value = TE());
 	Path min_path(size_t from, size_t to) {
@@ -541,7 +606,7 @@ public:
 
         res.reserve(edges * 2);
 		std::stack<size_t> st;
-		st.push(Graph<TV, TE>::vertexes.cbegin()->first);
+        st.push(Graph<TV, TE>::vertices.cbegin()->first);
 		while (!st.empty()) {
 			size_t v = st.top();
 			size_t i = 0;
@@ -609,13 +674,14 @@ public:
 		}
 		return path;
 	}
+
 };
 template <class TV, class TE>
 void UndirectedGraph<TV, TE>::erase_edge(size_t from, size_t to, TE _value) {
-    if (Graph<TV, TE>::vertexes.find(from) == Graph<TV, TE>::vertexes.end()) {
+    if (Graph<TV, TE>::vertices.find(from) == Graph<TV, TE>::vertices.end()) {
         return;
     }
-    if (Graph<TV, TE>::vertexes.find(to) == Graph<TV, TE>::vertexes.end()) {
+    if (Graph<TV, TE>::vertices.find(to) == Graph<TV, TE>::vertices.end()) {
         return;
     }
     for (auto it = Graph<TV, TE>::incidence_list[from].begin(); it != Graph<TV, TE>::incidence_list[from].end(); ) {
@@ -640,10 +706,10 @@ void UndirectedGraph<TV, TE>::erase_edge(size_t from, size_t to, TE _value) {
 }
 template <class TV, class TE>
 void DirectedGraph<TV, TE>::erase_edge(size_t from, size_t to, TE _value) {
-    if (Graph<TV, TE>::vertexes.find(from) == Graph<TV, TE>::vertexes.end()) {
+    if (Graph<TV, TE>::vertices.find(from) == Graph<TV, TE>::vertices.end()) {
         return;
     }
-    if (Graph<TV, TE>::vertexes.find(to) == Graph<TV, TE>::vertexes.end()) {
+    if (Graph<TV, TE>::vertices.find(to) == Graph<TV, TE>::vertices.end()) {
         return;
     }
     for (auto it = Graph<TV, TE>::incidence_list[from].begin(); it != Graph<TV, TE>::incidence_list[from].end(); ) {

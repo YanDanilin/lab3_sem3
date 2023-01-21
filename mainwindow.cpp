@@ -19,6 +19,7 @@ MainWindow::~MainWindow()
 void MainWindow::on_directedButton_clicked()
 {
     colours.clear();
+    top_sorted.clear();
     if (is_directed) {
         dgraph.clear();
     }
@@ -34,6 +35,7 @@ void MainWindow::on_directedButton_clicked()
 void MainWindow::on_weightButton_clicked()
 {
     colours.clear();
+    top_sorted.clear();
     if (is_weighed) {
         dgraph.clear();
     }
@@ -71,7 +73,7 @@ void MainWindow::paintEvent(QPaintEvent *event) {
         painter.drawEllipse(centre, 12, 12);
         size_t id = 0;
         if (is_directed) {
-            for (auto it = dgraph.vertexes.cbegin(); it != dgraph.vertexes.cend(); it++) {
+            for (auto it = dgraph.vertices.cbegin(); it != dgraph.vertices.cend(); it++) {
                 if (it->second.id != 0) {
                     id = it->second.id;
                     if (is_weighed) {
@@ -82,7 +84,7 @@ void MainWindow::paintEvent(QPaintEvent *event) {
             }
         }
         else {
-            for (auto it = undgraph.vertexes.cbegin(); it != undgraph.vertexes.cend(); it++) {
+            for (auto it = undgraph.vertices.cbegin(); it != undgraph.vertices.cend(); it++) {
                 if (it->second.id != 0) {
                     id = it->second.id;
                     if (is_weighed) {
@@ -105,7 +107,7 @@ void MainWindow::paintEvent(QPaintEvent *event) {
         std::unordered_map<size_t, std::vector<bool>> added_edges;
         added_edges.reserve(count);
         int counter = 0;
-        for (auto it = dgraph.vertexes.cbegin(); it != dgraph.vertexes.cend(); it++) {
+        for (auto it = dgraph.vertices.cbegin(); it != dgraph.vertices.cend(); it++) {
             draw_vertex(it->first, it->second.value, len, phi, centre, painter, counter);
             counter++;
             added_edges[it->first].resize(dgraph.incidence_list[it->first].size(), false);
@@ -123,7 +125,7 @@ void MainWindow::paintEvent(QPaintEvent *event) {
         std::unordered_map<size_t, std::vector<bool>> added_edges;
         added_edges.reserve(count);
         int counter = 0;
-        for (auto it = undgraph.vertexes.cbegin(); it != undgraph.vertexes.cend(); it++) {
+        for (auto it = undgraph.vertices.cbegin(); it != undgraph.vertices.cend(); it++) {
             draw_vertex(it->first, it->second.value, len, phi, centre, painter, counter);
             counter++;
             added_edges[it->first].resize(undgraph.incidence_list[it->first].size(), false);
@@ -136,6 +138,9 @@ void MainWindow::paintEvent(QPaintEvent *event) {
                 }
             }
         }
+    }
+    if (!top_sorted.empty()) {
+        draw_sorted_seq(painter);
     }
 }
 
@@ -247,13 +252,37 @@ void MainWindow::draw_connections(size_t from, size_t to, int value, bool direct
         painter.drawPolygon(points, 3);
         painter.setBrush(QBrush(Qt::green));
     }
-    if (is_weighed) {
-        painter.drawText(QPointF(pos[to].x()/2 + pos[from].x()/2 , pos[to].y()/2 + pos[from].y()/2) + QPointF(ky * y_offset * 0.25 , -kx * x_offset * 0.25) + QPointF(-kx * x_offset * 2, -ky * y_offset * 2), QString::number(value));
+    QPointF num_offset(-3, 4);
+    if (value >= 10) {
+        num_offset.rx() = -7;
     }
+    if (is_weighed) {
+        painter.drawText(QPointF(pos[to].x()/2 + pos[from].x()/2 , pos[to].y()/2 + pos[from].y()/2) + num_offset + QPointF(ky * y_offset * 0.6 , -kx * x_offset * 0.6) + QPointF(-kx * x_offset * 2, -ky * y_offset * 2), QString::number(value));
+    }
+}
+
+void MainWindow::draw_sorted_seq(QPainter& painter)
+{
+    QPointF num_offset(-3, 4);
+    qreal x = 785, y = 121;
+    painter.setBrush(QBrush(Qt::yellow));
+    for (size_t i = 0; i < count; ++i) {
+        if (top_sorted[i] >= 10) {
+            num_offset.rx() = -7;
+        }
+        if (top_sorted[i] == 0) {
+            break;
+        }
+        painter.drawEllipse(QPointF(x, y) , 12, 12);
+        painter.drawText(QPointF(x, y) + num_offset, QString::number(top_sorted[i]));
+        y+=28;
+    }
+    painter.setBrush(QBrush(Qt::green));
 }
 
 void MainWindow::on_dgButton_clicked()
 {
+    top_sorted.clear();
     colours.clear();
     if (is_directed) {
         dgraph.clear();
@@ -268,19 +297,20 @@ void MainWindow::on_dgButton_clicked()
 
 void MainWindow::on_dvButton_clicked()
 {
+    top_sorted.clear();
     colours.clear();
     size_t id = 0;
     bool ok;
     id = QInputDialog::getInt(this, QString("Vertex deleting"), QString("Enter id"), 0, 1, cur_id, 1, &ok);
     if (ok) {
         if (is_directed) {
-            if (dgraph.vertexes.find(id) != dgraph.vertexes.end()) {
+            if (dgraph.vertices.find(id) != dgraph.vertices.end()) {
                 dgraph.erase_vertex(id);
                 count--;
             }
         }
         else {
-            if (undgraph.vertexes.find(id) != undgraph.vertexes.end()) {
+            if (undgraph.vertices.find(id) != undgraph.vertices.end()) {
                 undgraph.erase_vertex(id);
                 count--;
             }
@@ -294,6 +324,7 @@ void MainWindow::on_dvButton_clicked()
 
 void MainWindow::on_avButton_clicked()
 {
+    top_sorted.clear();
     colours.clear();
 //    int value = 0;
 //    bool ok;
@@ -313,6 +344,7 @@ void MainWindow::on_avButton_clicked()
 
 void MainWindow::on_aeButton_clicked()
 {
+    top_sorted.clear();
     colours.clear();
     size_t id_from = 0;
     size_t id_to = 0;
@@ -337,6 +369,7 @@ void MainWindow::on_aeButton_clicked()
 
 void MainWindow::on_deButton_clicked()
 {
+    top_sorted.clear();
     colours.clear();
     size_t id_from = 0;
     size_t id_to = 0;
@@ -356,7 +389,9 @@ void MainWindow::on_deButton_clicked()
 
 void MainWindow::on_min_path_clicked()
 {
+    top_sorted.clear();
     path.clear();
+    colours.clear();
     size_t id_from = 0;
     size_t id_to = 0;
     bool ok1, ok2;
@@ -369,15 +404,29 @@ void MainWindow::on_min_path_clicked()
     else {
         path = undgraph.min_path(id_from, id_to);
     }
-    colours.clear();
     for (size_t i = 0; i < path.size(); ++i) {
         colours[Pair{path[i].id_from, path[i].id_to}] = Qt::red;
     }
     repaint();
 }
 
+void MainWindow::on_top_sort_clicked()
+{
+    if (!top_sorted.empty()) {
+        top_sorted.clear();
+    }
+    if (!is_directed) {
+        QMessageBox::information(this, "Topological sort", "This operation is for directed graphs");
+    }
+    else {
+        top_sorted = dgraph.top_sort();
+    }
+    repaint();
+}
+
 void MainWindow::on_euler_path_clicked()
 {
+    top_sorted.clear();
     path.clear();
     colours.clear();
     if (is_directed) {
@@ -391,8 +440,10 @@ void MainWindow::on_euler_path_clicked()
     }
     repaint();
 }
+
 void MainWindow::on_cycle_preset_clicked()
 {
+    top_sorted.clear();
     colours.clear();
     dgraph.clear();
     undgraph.clear();
@@ -417,9 +468,11 @@ void MainWindow::on_cycle_preset_clicked()
 
 void MainWindow::on_for_min_clicked()
 {
+    top_sorted.clear();
     colours.clear();
     dgraph.clear();
     undgraph.clear();
+    is_weighed = true;
     if (is_directed) {
         for (int i = 1; i < 7; ++i) {
             dgraph.add_vertex(i);
@@ -449,10 +502,9 @@ void MainWindow::on_for_min_clicked()
     repaint();
 }
 
-
 void MainWindow::on_complete_graph_clicked()
 {
-    srand(time(NULL));
+    top_sorted.clear();
     colours.clear();
     dgraph.clear();
     undgraph.clear();
@@ -468,6 +520,32 @@ void MainWindow::on_complete_graph_clicked()
         }
         cur_id = count;
     }
+    else {
+        undgraph.add_vertex(1);
+        cur_id = 1;
+        count = 1;
+    }
+    repaint();
+}
+
+void MainWindow::on_for_top_sort_clicked()
+{
+    is_directed = true;
+    top_sorted.clear();
+    colours.clear();
+    dgraph.clear();
+    undgraph.clear();
+    for (size_t i = 8; i > 0; --i) {
+        dgraph.add_vertex(i);
+    }
+    dgraph.add_edge(1, 4);
+    dgraph.add_edge(1, 7);
+    dgraph.add_edge(4, 6);
+    dgraph.add_edge(2, 6);
+    dgraph.add_edge(2, 8);
+    dgraph.add_edge(3, 7);
+    count = 8;
+    cur_id = 8;
     repaint();
 }
 
